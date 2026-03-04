@@ -1,0 +1,1095 @@
+openapi: 3.0.0
+info:
+  title: Creative Access Android API
+  description: >
+    Mobile API for the Creative Access Android application. Handles user authentication,
+    session management, mobile clocking (GPS-based attendance), and file management.
+    Bearer token is obtained via /AccountExtended/Authenticate and expires in 30 minutes.
+  version: 1.0.0
+
+servers:
+  - url: https://wifi.creasoft.ro/api
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: AccountExtended
+    description: Authentication and authorization endpoints (no Bearer token required)
+  - name: Session
+    description: User session information
+  - name: MobileClocking
+    description: GPS-based mobile attendance clocking operations
+  - name: ApiFile
+    description: File upload and download
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: JWT Bearer token obtained from /AccountExtended/Authenticate. Expires in 30 minutes.
+
+  schemas:
+
+    # ── AccountExtended ─────────────────────────────────────────────────────
+
+    AuthenticateRequest:
+      type: object
+      required:
+        - username
+        - password
+        - tenancyName
+      properties:
+        username:
+          type: string
+          description: The user's username
+        password:
+          type: string
+          description: The user's password
+        tenancyName:
+          type: string
+          description: The tenancy/company identifier
+
+    AuthenticateCreasoftPassRequest:
+      type: object
+      required:
+        - username
+        - password
+        - tenancyName
+        - creasoftPassId
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        tenancyName:
+          type: string
+        creasoftPassId:
+          type: string
+          description: The Creasoft Pass device identifier
+
+    AuthenticateResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Bearer token to use in subsequent requests
+
+    TenancyItem:
+      type: object
+      description: Returned when the user belongs to multiple tenancies
+      properties:
+        tenancyName:
+          type: string
+
+    IsApplicationAuthorizedRequest:
+      type: object
+      required:
+        - creasoftPassIdReceived
+      properties:
+        creasoftPassIdReceived:
+          type: string
+          description: The Creasoft Pass ID received by the device
+
+    IsApplicationAuthorizedResponse:
+      type: object
+      properties:
+        result:
+          type: boolean
+          description: Whether the application is authorized
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Error message description
+
+    # ── Session ──────────────────────────────────────────────────────────────
+
+    SessionInfoResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        surname:
+          type: string
+        emailAddress:
+          type: string
+          format: email
+        cultureInfo:
+          type: string
+          description: Locale/culture code (e.g. "en-US")
+        tagString:
+          type: string
+          nullable: true
+        companyName:
+          type: string
+        isMobileClockingAllowed:
+          type: boolean
+        menuEntriesAllowed:
+          type: array
+          items:
+            type: string
+
+    # ── MobileClocking ───────────────────────────────────────────────────────
+
+    MobileSettingsResponse:
+      type: object
+      properties:
+        mobileAttendance:
+          type: boolean
+          description: Whether mobile attendance tracking is enabled
+        restrictFarAwayPOI:
+          type: boolean
+          description: Whether clocking is restricted when far from a POI
+        farAwayPOIRestrictionMeters:
+          type: integer
+          description: Distance in meters for POI restriction
+        canCreatePOI:
+          type: boolean
+          description: Whether the user can create new Points of Interest
+        serverTimestamp:
+          type: string
+          format: date-time
+          description: Current server time
+        maxLocationDocuments:
+          type: integer
+          description: Maximum number of documents per location event
+        locationDocumentAllowedTypes:
+          type: string
+          description: Comma-separated list of allowed file extensions
+
+    StatusResponse:
+      type: object
+      properties:
+        startTime:
+          type: string
+          format: date-time
+          nullable: true
+          description: Time work was started; null if not currently working
+        areaEnterTime:
+          type: string
+          format: date-time
+          nullable: true
+          description: Time the user entered the current area
+        areaName:
+          type: string
+          nullable: true
+          description: Name of the current area/location
+
+    IsInVacationRequest:
+      type: object
+      required:
+        - day
+      properties:
+        day:
+          type: string
+          format: date
+          description: The date to check for vacation (ISO 8601 format)
+
+    IsInVacationResponse:
+      type: object
+      properties:
+        result:
+          type: boolean
+          description: Whether the user is on vacation on the given day
+
+    WorkActionRequest:
+      type: object
+      description: Request body for StartWork
+      required:
+        - latitude
+        - longitude
+      properties:
+        latitude:
+          type: number
+          format: double
+          description: GPS latitude
+        longitude:
+          type: number
+          format: double
+          description: GPS longitude
+        locationId:
+          type: integer
+          nullable: true
+          description: ID of the associated location/POI (null if none)
+        lastMessageId:
+          type: integer
+          nullable: true
+          description: Last known message ID for sync purposes
+        lastUserId:
+          type: integer
+          nullable: true
+          description: Last known user ID for sync purposes
+
+    EndWorkRequest:
+      type: object
+      description: Request body for EndWork
+      required:
+        - latitude
+        - longitude
+      properties:
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        locationId:
+          type: integer
+          nullable: true
+        lastMessageId:
+          type: integer
+          nullable: true
+        lastUserId:
+          type: integer
+          nullable: true
+        time:
+          type: string
+          format: date-time
+          nullable: true
+          description: Optional override for end time (e.g. for offline sync)
+
+    WorkActionResponse:
+      type: object
+      properties:
+        errorMessage:
+          type: string
+          nullable: true
+          description: Error message if the action failed; null on success
+        messageId:
+          type: integer
+          description: ID of the clocking message created
+        startTime:
+          type: string
+          format: date-time
+          nullable: true
+        areaEnterTime:
+          type: string
+          format: date-time
+          nullable: true
+        areaName:
+          type: string
+          nullable: true
+
+    LocationItem:
+      type: object
+      description: A configured location / Point of Interest
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        address:
+          type: string
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        minLatitude:
+          type: number
+          format: double
+        maxLatitude:
+          type: number
+          format: double
+        minLongitude:
+          type: number
+          format: double
+        maxLongitude:
+          type: number
+          format: double
+
+    AvailableLocationItem:
+      type: object
+      description: Minimal location reference returned by GetAvailableLocations
+      properties:
+        id:
+          type: integer
+
+    LocationActionRequest:
+      type: object
+      description: Request body for EnterLocation
+      required:
+        - latitude
+        - longitude
+        - locationId
+      properties:
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        locationId:
+          type: integer
+        inaccurate:
+          type: boolean
+          description: Whether the GPS reading was inaccurate
+        comment:
+          type: string
+          nullable: true
+        lastMessageId:
+          type: integer
+          nullable: true
+        lastUserId:
+          type: integer
+          nullable: true
+
+    ConfirmLocationRequest:
+      type: object
+      description: Request body for ConfirmLocation
+      required:
+        - latitude
+        - longitude
+        - locationId
+      properties:
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        locationId:
+          type: integer
+        comment:
+          type: string
+          nullable: true
+        lastMessageId:
+          type: integer
+          nullable: true
+        lastUserId:
+          type: integer
+          nullable: true
+
+    ExitLocationRequest:
+      type: object
+      description: Request body for ExitLocation
+      required:
+        - latitude
+        - longitude
+        - locationId
+      properties:
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        locationId:
+          type: integer
+        inaccurate:
+          type: boolean
+        comment:
+          type: string
+          nullable: true
+        lastMessageId:
+          type: integer
+          nullable: true
+        lastUserId:
+          type: integer
+          nullable: true
+        time:
+          type: string
+          format: date-time
+          nullable: true
+          description: Optional override for exit time
+
+    LocationActionResponse:
+      type: object
+      description: Response for EnterLocation, ConfirmLocation, and ExitLocation
+      properties:
+        messageId:
+          type: integer
+        enterDate:
+          type: string
+          format: date-time
+        enterLocationId:
+          type: integer
+        inaccurate:
+          type: boolean
+        locationConfirmationsCount:
+          type: integer
+        lastLocationConfirmationDate:
+          type: string
+          format: date-time
+          nullable: true
+
+    CreateLocationRequest:
+      type: object
+      required:
+        - name
+        - latitude
+        - longitude
+        - address
+      properties:
+        name:
+          type: string
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        address:
+          type: string
+
+    MobileClockingOfflineEvent:
+      type: object
+      description: A single offline clocking event to be submitted
+      properties:
+        eventType:
+          type: integer
+          description: Type of event (e.g. StartWork=1, EndWork=2, EnterLocation=3, etc.)
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        locationId:
+          type: integer
+          nullable: true
+        inaccurate:
+          type: boolean
+        comment:
+          type: string
+          nullable: true
+        time:
+          type: string
+          format: date-time
+          description: The timestamp when the event occurred offline
+        internalId:
+          type: string
+          description: Client-generated ID used to match response back to event
+
+    FillOfflineEventsRequest:
+      type: object
+      required:
+        - events
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/MobileClockingOfflineEvent'
+
+    FillOfflineEventsResponseItem:
+      type: object
+      properties:
+        internalId:
+          type: string
+          description: Matches the internalId from the request
+        messageId:
+          type: integer
+        mobilePositionId:
+          type: integer
+
+    LastLocationItem:
+      type: object
+      properties:
+        mobilePositionId:
+          type: integer
+        locationId:
+          type: integer
+        locationName:
+          type: string
+        latitude:
+          type: number
+          format: double
+        date:
+          type: string
+          format: date-time
+
+    FilesForLocationsRequest:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: integer
+          description: The mobilePositionId to look up files for
+
+    FileItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: File identifier
+        fileName:
+          type: string
+
+    SetFilesToLocationRequest:
+      type: object
+      required:
+        - mobilePositionId
+        - fileIds
+      properties:
+        mobilePositionId:
+          type: integer
+        fileIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    # ── ApiFile ──────────────────────────────────────────────────────────────
+
+    UploadResponse:
+      type: object
+      properties:
+        fileId:
+          type: string
+          format: uuid
+        message:
+          type: string
+          description: Status message from the upload operation
+
+# ── Paths ────────────────────────────────────────────────────────────────────
+
+paths:
+
+  # AccountExtended ─────────────────────────────────────────────────────────
+
+  /AccountExtended/Authenticate:
+    post:
+      tags:
+        - AccountExtended
+      summary: Authenticate user
+      description: >
+        Authenticate with username and password. If the tenancyName matches exactly one
+        tenancy, returns a Bearer token. If multiple tenancies are found, returns a list
+        of tenancy names for the user to choose from. The chosen tenancyName should then
+        be sent again in a second request.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthenticateRequest'
+            example:
+              username: "john.doe"
+              password: "secret"
+              tenancyName: "MyCompany"
+      responses:
+        '200':
+          description: >
+            Authentication result. Either a token object (single tenancy) or an array
+            of tenancy items (multiple tenancies found).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/AuthenticateResponse'
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/TenancyItem'
+        '400':
+          description: Invalid credentials or bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /AccountExtended/AuthenticateCreasoftPass:
+    post:
+      tags:
+        - AccountExtended
+      summary: Authenticate with Creasoft Pass
+      description: >
+        Authenticate using a Creasoft Pass device ID. Same tenancy logic as Authenticate.
+        Returns 400 with message "User already connected..." if the Creasoft Pass ID
+        is already linked to a different active session.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthenticateCreasoftPassRequest'
+      responses:
+        '200':
+          description: Authentication result - token or list of tenancies
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/AuthenticateResponse'
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/TenancyItem'
+        '400':
+          description: Invalid credentials or Creasoft Pass already connected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /AccountExtended/isApplicationAuthorized:
+    post:
+      tags:
+        - AccountExtended
+      summary: Check if application is authorized
+      description: Verify whether the Creasoft Pass application ID is authorized in the system.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IsApplicationAuthorizedRequest'
+      responses:
+        '200':
+          description: Authorization check result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IsApplicationAuthorizedResponse'
+
+  # Session ─────────────────────────────────────────────────────────────────
+
+  /Session/GetSessionInfo:
+    get:
+      tags:
+        - Session
+      summary: Get session information
+      description: Returns profile and permission data for the currently authenticated user.
+      responses:
+        '200':
+          description: Session info retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionInfoResponse'
+        '401':
+          description: Unauthorized - missing or invalid token
+
+  # MobileClocking ──────────────────────────────────────────────────────────
+
+  /MobileClocking/GetMobileSettings:
+    get:
+      tags:
+        - MobileClocking
+      summary: Get mobile clocking settings
+      description: Returns configuration values for mobile clocking behavior (POI restrictions, document limits, etc.).
+      responses:
+        '200':
+          description: Mobile settings retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileSettingsResponse'
+        '401':
+          description: Unauthorized
+
+  /MobileClocking/GetStatus:
+    get:
+      tags:
+        - MobileClocking
+      summary: Get current work status
+      description: Returns whether the user is currently clocked in and their current area/location.
+      responses:
+        '200':
+          description: Status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '401':
+          description: Unauthorized
+
+  /MobileClocking/IsInVacation:
+    post:
+      tags:
+        - MobileClocking
+      summary: Check vacation status for a day
+      description: Returns whether the authenticated user is on approved vacation on the specified date.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IsInVacationRequest'
+            example:
+              day: "2024-12-25"
+      responses:
+        '200':
+          description: Vacation check result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IsInVacationResponse'
+        '401':
+          description: Unauthorized
+
+  /MobileClocking/StartWork:
+    post:
+      tags:
+        - MobileClocking
+      summary: Start work
+      description: Clock in to start a work session. GPS coordinates are required.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkActionRequest'
+            example:
+              latitude: 44.4268
+              longitude: 26.1025
+              locationId: null
+              lastMessageId: null
+              lastUserId: null
+      responses:
+        '200':
+          description: Clock-in registered. Check errorMessage field for business logic errors.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkActionResponse'
+        '401':
+          description: Unauthorized
+
+  /MobileClocking/EndWork:
+    post:
+      tags:
+        - MobileClocking
+      summary: End work
+      description: Clock out to end the current work session. GPS coordinates are required.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EndWorkRequest'
+            example:
+              latitude: 44.4268
+              longitude: 26.1025
+              locationId: null
+              lastMessageId: null
+              lastUserId: null
+              time: null
+      responses:
+        '200':
+          description: Clock-out registered. Check errorMessage field for business logic errors.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkActionResponse'
+        '401':
+          description: Unauthorized
+
+  /MobileClocking/GetLocations:
+    get:
+      tags:
+        - MobileClocking
+      summary: Get all locations
+      description: Returns all configured Points of Interest (POIs) with their GPS boundaries.
+      responses:
+        '200':
+          description: Locations list retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LocationItem'
+        '401':
+          description: Unauthorized
+
+  /MobileClocking/GetAvailableLocations:
+    get:
+      tags:
+        - MobileClocking
+      summary: Get available locations for the user
+      description: Returns the IDs of locations the current user is allowed to clock in/out at.
+      responses:
+        '200':
+          description: Available location IDs retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AvailableLocationItem'
+        '401':
+          description: Unauthorized
+
+  /MobileClocking/GetLocationStatus:
+    get:
+      tags:
+        - MobileClocking
+      summary: Get current location clocking status
+      description: Returns the status of location-based clocking (POI entry time, area info).
+      responses:
+        '200':
+          description: Location status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '401':
+          description: Unauthorized
+
+  /MobileClocking/EnterLocation:
+    post:
+      tags:
+        - MobileClocking
+      summary: Enter a location (POI)
+      description: Register entry into a Point of Interest with GPS coordinates.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationActionRequest'
+            example:
+              latitude: 44.4268
+              longitude: 26.1025
+              locationId: 5
+              inaccurate: false
+              comment: null
+              lastMessageId: null
+              lastUserId: null
+      responses:
+        '200':
+          description: Location entry registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationActionResponse'
+        '401':
+          description: Unauthorized
+
+  /MobileClocking/ConfirmLocation:
+    post:
+      tags:
+        - MobileClocking
+      summary: Confirm presence at a location
+      description: Confirm continued presence at a Point of Interest (periodic confirmation).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmLocationRequest'
+      responses:
+        '200':
+          description: Location presence confirmed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationActionResponse'
+        '401':
+          description: Unauthorized
+
+  /MobileClocking/ExitLocation:
+    post:
+      tags:
+        - MobileClocking
+      summary: Exit a location (POI)
+      description: Register exit from a Point of Interest.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExitLocationRequest'
+      responses:
+        '200':
+          description: Location exit registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationActionResponse'
+        '401':
+          description: Unauthorized
+
+  /MobileClocking/CreateLocation:
+    post:
+      tags:
+        - MobileClocking
+      summary: Create a new location (POI)
+      description: >
+        Create a new Point of Interest. Only available if canCreatePOI is true
+        in mobile settings.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLocationRequest'
+            example:
+              name: "Office Building A"
+              latitude: 44.4268
+              longitude: 26.1025
+              address: "Str. Exemplu 1, Bucuresti"
+      responses:
+        '200':
+          description: Location created successfully - returns full location object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationItem'
+        '401':
+          description: Unauthorized
+
+  /MobileClocking/FillOfflineEvents:
+    post:
+      tags:
+        - MobileClocking
+      summary: Submit offline clocking events
+      description: >
+        Batch submit clocking events that were recorded while the device was offline.
+        Each event includes a client-generated internalId so the response can be
+        matched back to each submitted event.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FillOfflineEventsRequest'
+      responses:
+        '200':
+          description: Offline events processed - returns result for each event
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FillOfflineEventsResponseItem'
+        '401':
+          description: Unauthorized
+
+  /MobileClocking/GetLastLocations:
+    get:
+      tags:
+        - MobileClocking
+      summary: Get last recorded location positions
+      description: Returns the most recent mobile position records for the current user.
+      responses:
+        '200':
+          description: Last locations retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LastLocationItem'
+        '401':
+          description: Unauthorized
+
+  /MobileClocking/FilesForLocations:
+    post:
+      tags:
+        - MobileClocking
+      summary: Get files attached to a location position
+      description: Returns the list of files attached to a specific mobile position record.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FilesForLocationsRequest'
+            example:
+              id: 123
+      responses:
+        '200':
+          description: Files retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FileItem'
+        '401':
+          description: Unauthorized
+
+  /MobileClocking/SetFilesToLocation:
+    post:
+      tags:
+        - MobileClocking
+      summary: Attach files to a location position
+      description: Associate one or more uploaded files with a mobile position record.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetFilesToLocationRequest'
+            example:
+              mobilePositionId: 123
+              fileIds:
+                - "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Files attached successfully
+        '401':
+          description: Unauthorized
+
+  # ApiFile ─────────────────────────────────────────────────────────────────
+
+  /ApiFile/Upload:
+    post:
+      tags:
+        - ApiFile
+      summary: Upload a file
+      description: Upload a file using multipart/form-data. Returns a fileId for later use.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The file to upload
+      responses:
+        '200':
+          description: File uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+        '401':
+          description: Unauthorized
+
+  /ApiFile/File:
+    get:
+      tags:
+        - ApiFile
+      summary: Download a file
+      description: Download a previously uploaded file by its UUID.
+      parameters:
+        - name: fileId
+          in: query
+          required: true
+          description: UUID of the file to download
+          schema:
+            type: string
+            format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: File content returned as binary stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Unauthorized
+        '404':
+          description: File not found
