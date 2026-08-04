@@ -16,8 +16,8 @@ info:
   contact:
     name: Creasoft IT
 servers:
-- url: https://testwifi.creasoft.ro/api
-  description: Test server
+- url: https://wifi.creasoft.ro/api
+  description: Production server
 security:
 - BearerAuth: []
 tags:
@@ -2418,6 +2418,15 @@ components:
         vacationDaysReportedInitial:
           type: integer
           nullable: true
+        tenantProfileId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >-
+            Identifier of the tenant profile to assign to the employee.
+            When omitted or null, no tenant profile is associated.
+            If required, request the tenantProfileIds from the Creasoft HR representatives
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
     VacationItem:
       type: object
       properties:
@@ -2866,6 +2875,23 @@ components:
         apiIgnoreCardSerialDecimal:
           type: boolean
           description: When true, ignores the cardSerialDecimal field during update
+        tenantProfileId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >-
+            Identifier of the tenant profile to assign to the employee.
+            Only applied when editTenantProfileId is true; otherwise the
+            employee's existing tenant profile is preserved.
+            If required, request the tenantProfileIds from the Creasoft HR representatives
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        editTenantProfileId:
+          type: boolean
+          description: >-
+            When true, the tenantProfileId value is applied to the employee.
+            When false (default), tenantProfileId is ignored and the existing
+            tenant profile is kept unchanged.
+          example: false
     VacationUpdateRequest:
       type: object
       required:

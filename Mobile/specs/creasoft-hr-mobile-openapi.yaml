@@ -132,10 +132,33 @@ components:
           type: string
         isMobileClockingAllowed:
           type: boolean
+        isQRCodeHidden:
+          type: boolean
+          description: |
+            Tenant setting (MobileQRCodeHidden). When true, the QR code must be
+            hidden from the mobile clocking interface and replaced with a
+            "QR code disabled" placeholder. Bluetooth authentication remains
+            available, if enabled.
         menuEntriesAllowed:
-          type: array
-          items:
-            type: string
+          type: object
+          additionalProperties:
+            type: boolean
+          description: |
+            Fixed set of menu entries returned by backend.
+            All keys are always present in response.
+            Value true = allowed, false = not allowed.
+          example:
+            VacationsRequests: false
+            ShiftsPlanningEmployees: true
+            EmployeeCertificates: true
+            SalarySlip: true
+            WorkSheetITMDetailed: false
+            ShiftsPlanning: true
+            VacationsPlanning: false
+            VacationsRequestApprovals: false
+            LeavesRequestApprovals: false
+            ManualPresence: true
+            SendMessages: false
 
     # ── MobileClocking ───────────────────────────────────────────────────────
 

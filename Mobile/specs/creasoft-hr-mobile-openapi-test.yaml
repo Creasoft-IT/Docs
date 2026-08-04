@@ -8,8 +8,8 @@ info:
   version: 1.0.0
 
 servers:
-  - url: https://testwifi.creasoft.ro/api
-    description: Test server
+  - url: https://wifi.creasoft.ro/api
+    description: Production server
 
 security:
   - BearerAuth: []
@@ -132,6 +132,13 @@ components:
           type: string
         isMobileClockingAllowed:
           type: boolean
+        isQRCodeHidden:
+          type: boolean
+          description: |
+            Tenant setting (MobileQRCodeHidden). When true, the QR code must be
+            hidden from the mobile clocking interface and replaced with a
+            "QR code disabled" placeholder. Bluetooth authentication remains
+            available, if enabled.
         menuEntriesAllowed:
           type: object
           additionalProperties:
