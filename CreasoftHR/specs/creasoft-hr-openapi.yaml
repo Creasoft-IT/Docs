@@ -2566,7 +2566,19 @@ components:
         companyName:
           type: string
           nullable: true
-          description: Company name on the document
+          description: Company name displayed on the document
+        tenantProfileId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >-
+            Identifier of the tenant profile (company) associated with the document.
+            When set, it is stored as a snapshot on the document group and used later
+            for archive provider resolution (e.g. Namirial per profile).
+            When omitted or null, the document is not bound to a specific profile
+            (tenant-level archive provider is used when available).
+            If required, request the tenantProfileIds from the Creasoft HR representatives
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
         signAuthType:
           type: integer
           description: 'Authentication type for signing:
