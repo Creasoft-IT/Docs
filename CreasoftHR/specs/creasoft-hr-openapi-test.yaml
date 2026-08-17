@@ -1347,8 +1347,9 @@ paths:
     post:
       tags:
       - Document
-      summary: Get Documents
-      description: 'Retrieve documents list.
+      summary: Get Document
+      description: 'Retrieve a single document group by its identifier, together with
+        the per-employee documents, their signing status and their files.
 
 
         Requires `Electronic Signatures` permission.
@@ -1360,27 +1361,21 @@ paths:
           application/json:
             schema:
               type: object
+              required:
+              - id
               properties:
-                startDate:
+                id:
                   type: string
-                  format: date-time
-                  description: Start date filter
-                endDate:
-                  type: string
-                  format: date-time
-                  description: End date filter
-                status:
-                  type: integer
-                  description: Document status filter (0-7)
+                  format: uuid
+                  description: Document ID (the id returned by `/document/create`)
+                  example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
       responses:
         '200':
-          description: Documents list
+          description: Document details
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/DocumentItem'
+                $ref: '#/components/schemas/DocumentGetResponse'
   /document/cancel:
     post:
       tags:
@@ -2615,55 +2610,115 @@ components:
               signByCurrentUser:
                 type: boolean
                 description: Whether the current user should also sign
-    DocumentItem:
+    DocumentGetResponse:
       type: object
+      description: >-
+        A document group: the header data sent on create, plus one entry per
+        employee the document was assigned to.
       properties:
         id:
           type: string
           format: uuid
+          description: Document (group) ID
         date:
           type: string
           format: date-time
+          description: Document date, as sent on create
         number:
           type: string
           nullable: true
+          description: Document number
         description:
           type: string
+          description: Document description (the `description` sent on create)
+          example: Contract de munca
         companyName:
           type: string
           nullable: true
-        signAuthType:
-          type: integer
-        status:
-          type: integer
-          description: 'Document status:
-
-            0=Not Signed, 1=Signed by employee(s), 2=Signed by manager,
-
-            3=Signed, 4=Cancelled, 5=Expired, 6=Rejected, 7=Error
-
-            '
-        statusName:
-          type: string
-        createdAt:
+          description: Company name displayed on the document
+        creationTime:
           type: string
           format: date-time
-        employees:
+          description: UTC timestamp of when the document was created in the system
+        signAuthType:
+          type: integer
+          description: 'Authentication type for signing:
+
+            0=AdvancedDouble, 1=AdvancedEmail, 2=AdvancedSMS,
+
+            3=SimpleEmail, 4=SimpleSMS, 5=Simple
+
+            '
+          example: 3
+        status:
+          $ref: '#/components/schemas/DocumentStatus'
+        employeesDocuments:
           type: array
+          description: One entry per employee assigned to this document
           items:
-            type: object
-            properties:
-              employeeId:
-                type: string
-                format: uuid
-              employeeName:
-                type: string
-              signed:
-                type: boolean
-              signedAt:
-                type: string
-                format: date-time
-                nullable: true
+            $ref: '#/components/schemas/EmployeeDocument'
+    EmployeeDocument:
+      type: object
+      description: The copy of the document belonging to one employee.
+      properties:
+        employeeId:
+          type: string
+          format: uuid
+          description: Employee ID (one of the `employeesIds` sent on create)
+          example: a357a164-cfdc-4355-ad80-324e67ff9d28
+        employeeMark:
+          type: string
+          nullable: true
+          description: Employee mark (badge number)
+        status:
+          $ref: '#/components/schemas/DocumentStatus'
+        lastSignDate:
+          type: string
+          format: date-time
+          nullable: true
+          description: Date of the last signature applied; null if never signed
+        initialFiles:
+          type: array
+          description: The files as uploaded on create, before any signature
+          items:
+            $ref: '#/components/schemas/EmployeeDocumentFile'
+        lastSignedFiles:
+          type: array
+          description: >-
+            The files from the most recent signing round. Empty when no
+            signature has been applied yet.
+          items:
+            $ref: '#/components/schemas/EmployeeDocumentFile'
+    EmployeeDocumentFile:
+      type: object
+      description: >-
+        File metadata only. Use `/document/DownloadFiles` to get the file
+        contents.
+      properties:
+        id:
+          type: string
+          format: uuid
+          nullable: true
+          description: File ID
+        templateId:
+          type: string
+          nullable: true
+          description: Template file ID. Templates are not yet supported, so always null.
+        fileName:
+          type: string
+          description: File name
+    DocumentStatus:
+      type: integer
+      description: 'Document status:
+
+        0=NotSigned, 1=SignedByEmployee, 2=SignedByManager, 3=Signed,
+
+        4=Canceled, 5=SignedByEmployeePartial, 6=MarkedForArchive,
+
+        7=Archived, 8=SignedByEmployeeAndManager, 9=SignedBySsmResponsibles
+
+        '
+      example: 0
     RFIDUpdateRequest:
       type: object
       required:
