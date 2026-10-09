@@ -373,6 +373,81 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/CollectiveWorksheetItem'
+  /reports/saved_collective_worksheet:
+    post:
+      tags:
+      - Reports
+      summary: Saved Collective Worksheet
+      description: 'Retrieve the latest validated collective worksheet saved for a
+        selected month. The values are returned exactly as they were validated, they
+        are not recomputed.
+
+        If the user is limited to some departments, only the employees of those departments
+        are returned; the list is empty when the sheet holds none of them.
+
+
+        Requires `Collective sheet history` permission.
+
+        '
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - date
+              properties:
+                date:
+                  type: string
+                  format: date
+                  description: Month for the report
+                  example: '2026-09-01'
+      responses:
+        '200':
+          description: The latest validated collective worksheet of the month
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sheetId:
+                    type: string
+                    format: uuid
+                    description: Id of the returned saved collective worksheet
+                    example: 3f2504e0-4f89-41d3-9a0c-0305e82c3301
+                  name:
+                    type: string
+                    description: Name of the returned saved collective worksheet
+                    example: FCP_09.2026_v2_AI
+                  month:
+                    type: string
+                    format: date-time
+                    description: Month of the collective worksheet
+                    example: '2026-09-01T00:00:00'
+                  validatedAt:
+                    type: string
+                    format: date-time
+                    description: When the collective worksheet was validated
+                    example: '2026-10-02T09:14:00'
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CollectiveWorksheetItem'
+        '400':
+          description: No validated collective worksheet is saved for the month
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: FCP_NOT_VALIDATED
+                  message:
+                    type: string
+                    example: There is no validated saved collective attendance sheet
+                      for the selected month.
   /reports/monthly_normal_time:
     post:
       tags:
